@@ -40,7 +40,7 @@ npm run dev
 
 ### Config & Environment Setup
 
-This app uses Netlify Edge Functions and Postgres database for true persistence. To enable SSOT (Single Source of Truth) on your live site:
+This app uses Netlify Edge Functions, Postgres, and Prisma ORM for true persistence. To enable SSOT (Single Source of Truth) on your live site:
 
 1. In Netlify, click **Add new site** > **Import an existing project**.
 2. Netlify detects the `netlify.toml` file correctly for Vite + Serverless Functions.
@@ -48,15 +48,16 @@ This app uses Netlify Edge Functions and Postgres database for true persistence.
 4. Go to **Site Configuration** > **Environment variables** and add:
    - Key: `GEMINI_API_KEY`
    - Value: `<your_gemini_api_key>`
-5. Trigger a new deploy!
+5. Go to your site's deployment settings and make sure your build command is `prisma generate && vite build`.
+6. Trigger a new deploy!
 
 *(If `DATABASE_URL` is omitted or disconnected, the app gracefully falls back to local `localStorage`!)*
 
-### Local Testing with Database
+### Local Testing with Database (Prisma)
 
-To test the serverless functions (`/api/logs` and `/api/memory`) locally on your machine:
+To test the serverless functions (`/api/logs` and `/api/memory`) locally on your machine with Prisma:
 
-1. Install Netlify CLI:
+1. Install Netlify CLI globally:
    ```bash
    npm install netlify-cli -g
    ```
@@ -66,11 +67,21 @@ To test the serverless functions (`/api/logs` and `/api/memory`) locally on your
    netlify env:pull
    ```
    *(This ensures your local environment has the same `DATABASE_URL` and `GEMINI_API_KEY`!)*
-3. Start the local dev server using Netlify CLI:
+3. Run Prisma's setup and generate to push the schema to your database locally first:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+4. Start the local dev server using Netlify CLI:
    ```bash
    netlify dev
    ```
-   *Your app will now run with fully functioning local APIs seamlessly proxying to your database!*
+   *Your app will now run with fully functioning local APIs seamlessly proxying to your Prisma backend!*
+
+5. You can view your database at any time using:
+   ```bash
+   npx prisma studio
+   ```
 
 ---
 

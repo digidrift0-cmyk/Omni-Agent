@@ -1,21 +1,28 @@
-import postgres from 'postgres';
+import { PrismaClient } from '@prisma/client';
 import type { Config, Context } from "@netlify/functions";
 
-const sql = process.env.DATABASE_URL ? postgres(process.env.DATABASE_URL) : null;
+const prisma = new PrismaClient();
 
 export default async (req: Request, context: Context) => {
-    if (!sql) return new Response(JSON.stringify({ error: "No DB connection" }), { status: 500 });
-    
     try {
         if (req.method === 'GET') {
-            await sql`CREATE TABLE IF NOT EXISTS omni_logs (id TEXT PRIMARY KEY, time TEXT, level TEXT, msg TEXT, pending BOOLEAN)`;
-            const logs = await sql`SELECT * FROM omni_logs ORDER BY time ASC LIMIT 100`;
+            const logs = await prisma.log.findMany({
+                orderBy: { time: 'asc' },
+                take: 100
+            });
             return new Response(JSON.stringify(logs), { headers: { 'Content-Type': 'application/json' }});
         } 
         else if (req.method === 'POST') {
             const data = await req.json();
-            await sql`INSERT INTO omni_logs (id, time, level, msg, pending) 
-                      VALUES (${data.id}, ${data.time}, ${data.level}, ${data.msg}, ${data.pending})`;
+            await prisma.log.create({
+                data: {
+                    id: data.id,
+                    time: data.time,
+                    level: data.level,
+                    msg: data.msg,
+                    pending: data.pending
+                }
+            });
             return new Response(JSON.stringify({ success: true }), { headers: { 'Content-Type': 'application/json' }});
         }
     } catch(e: any) {

@@ -1,0 +1,25 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Log {
+  id      String   @id
+  time    String
+  level   String
+  msg     String
+  pending Boolean? @default(false)
+}
+
+model SpatialMemory {
+  id         String @id
+  label      String
+  confidence String
+  lastSeen   String
+  utility    String
+}
