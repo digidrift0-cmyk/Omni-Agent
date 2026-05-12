@@ -3,7 +3,7 @@ import { AppContext } from '../App';
 import { Shield, Settings, Download, Info } from 'lucide-react';
 
 export function SettingsTab({ lowStimulus, setLowStimulus }: any) {
-  const { logs, spatialMemory, notify } = useContext(AppContext);
+  const { logs, spatialMemory, notify, cloudSynced, proactiveEnabled, setProactiveEnabled } = useContext(AppContext);
 
   const handleExport = () => {
     const data = JSON.stringify({ logs, spatialMemory }, null, 2);
@@ -28,6 +28,15 @@ export function SettingsTab({ lowStimulus, setLowStimulus }: any) {
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
           <Shield className="w-5 h-5 text-white/50" />
           <h3 className="font-bold uppercase tracking-widest text-sm">Consent & Privacy</h3>
+        </div>
+        <div className="flex justify-between items-center pb-4 border-b border-white/10">
+          <div>
+            <h4 className="font-bold text-white uppercase text-xs tracking-wider">SSOT Status</h4>
+            <p className="text-xs text-white/50 mt-1">Single Source of Truth storage backend.</p>
+          </div>
+          <button className={`px-4 py-2 border text-xs font-bold uppercase transition-colors min-w-[100px] min-h-[44px] ${cloudSynced ? 'border-green-500/40 bg-green-500/10 text-green-400' : 'border-zinc-700 bg-zinc-800 text-white'}`}>
+            {cloudSynced ? 'Cloud Synced' : 'Local Fallback'}
+          </button>
         </div>
         <div className="flex justify-between items-center">
           <div>
@@ -68,13 +77,32 @@ export function SettingsTab({ lowStimulus, setLowStimulus }: any) {
             {lowStimulus ? 'Active' : 'Enable'}
           </button>
         </div>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center border-b border-white/10 pb-4">
           <div>
             <h4 className="font-bold text-white uppercase text-xs tracking-wider">Font Scaling</h4>
             <p className="text-xs text-white/50 mt-1">Increase base typography size.</p>
           </div>
           <button className={`px-4 py-2 border text-xs font-bold uppercase transition-colors min-w-[100px] min-h-[44px] ${lowStimulus ? 'border-zinc-700 text-zinc-300' : 'border-white/20 text-white/50'}`} disabled aria-disabled="true">
             Default
+          </button>
+        </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <h4 className="font-bold text-white uppercase text-xs tracking-wider">Proactive Suggestions</h4>
+            <p className="text-xs text-white/50 mt-1">Agent occasionally surfaces context-aware recommendations.</p>
+          </div>
+          <button 
+            onClick={() => {
+              if (setProactiveEnabled) {
+                 setProactiveEnabled(!proactiveEnabled);
+                 notify(proactiveEnabled ? 'Proactive suggestions disabled.' : 'Proactive suggestions enabled.');
+              }
+            }}
+            className={`px-4 py-2 border text-xs font-bold uppercase transition-colors min-w-[100px] min-h-[44px] ${
+              proactiveEnabled 
+                ? (lowStimulus ? 'border-zinc-500 bg-white text-black' : 'border-cyan-500/40 bg-cyan-500/10 text-cyan-400') 
+                : 'border-white/20 hover:bg-white/10'}`}>
+            {proactiveEnabled ? 'Enabled' : 'Disabled'}
           </button>
         </div>
       </div>

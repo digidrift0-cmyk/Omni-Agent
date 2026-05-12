@@ -57,6 +57,16 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">Required Training: Try these commands</h3>
+            <div className="flex flex-col gap-2">
+              <code className="text-xs text-white/90 bg-black p-3 border border-zinc-800 rounded-sm select-all">"Prepare an accessibility audit for my workspace"</code>
+              <code className="text-xs text-white/90 bg-black p-3 border border-zinc-800 rounded-sm select-all">"Summarize recent intents and suggest low stimulus"</code>
+              <code className="text-xs text-white/90 bg-black p-3 border border-zinc-800 rounded-sm select-all">"Engage deep work mode"</code>
+            </div>
+            <p className="text-[10px] text-white/40 uppercase mt-2">Tap/click to select text, then paste into the CMD bar below.</p>
+          </div>
+
           <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row gap-6 justify-between items-center">
             <div className="flex items-center gap-3 text-xs text-white/40 uppercase tracking-widest font-bold">
               <Check className="w-4 h-4 text-green-500" /> WCAG 2.2 AA Compliant

@@ -45,12 +45,15 @@ export function VisionTab({ lowStimulus }: any) {
       <div className="mt-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:h-64 h-auto">
         <div className={`p-6 flex flex-col border ${lowStimulus ? 'border-zinc-900 bg-black' : 'border-white/20 bg-white/[0.02]'}`}>
           <span className={`text-[10px] font-bold uppercase tracking-widest mb-auto ${lowStimulus ? 'text-zinc-500' : 'text-white/40'}`}>Environmental Scene Graph</span>
-          <div className="flex items-end space-x-1 h-24 my-4">
-            <motion.div animate={{ height: `${lidarHeights[0]}%` }} className={`w-full ${lowStimulus ? 'bg-zinc-600' : 'bg-cyan-500'}`}></motion.div>
-            <motion.div animate={{ height: `${lidarHeights[1]}%` }} className={`w-full ${lowStimulus ? 'bg-zinc-700' : 'bg-cyan-500/50'}`}></motion.div>
-            <motion.div animate={{ height: `${lidarHeights[2]}%` }} className={`w-full ${lowStimulus ? 'bg-zinc-600' : 'bg-cyan-500'}`}></motion.div>
-            <motion.div animate={{ height: `${lidarHeights[3]}%` }} className={`w-full ${lowStimulus ? 'bg-zinc-800' : 'bg-cyan-500/20'}`}></motion.div>
-            <motion.div animate={{ height: `${lidarHeights[4]}%` }} className={`w-full ${lowStimulus ? 'bg-zinc-600' : 'bg-cyan-500'}`}></motion.div>
+          <div className="flex items-end space-x-1 h-24 my-4 group cursor-crosshair">
+            {lidarHeights.map((h, i) => (
+              <motion.div 
+                key={i} 
+                animate={{ height: `${h}%` }} 
+                whileHover={{ height: '100%', scaleY: 1.1 }}
+                className={`w-full origin-bottom rounded-t-sm transition-colors ${lowStimulus ? 'bg-zinc-600 group-hover:bg-zinc-500' : 'bg-cyan-500/80 group-hover:bg-cyan-400'}`}
+              />
+            ))}
           </div>
           <div className={`font-mono text-[10px] uppercase mt-auto ${lowStimulus ? 'text-zinc-600' : 'text-white/60'}`}>LIDAR: Polling (320Hz)</div>
         </div>
@@ -112,6 +115,7 @@ function Card({title, icon: Icon, desc, lowStimulus}: any) {
 export function FlowTab({ lowStimulus }: any) {
   const { logs, addLog } = useContext(AppContext);
   const [gateApproved, setGateApproved] = useState(false);
+  const [filter, setFilter] = useState('all');
   
   const statuses = ['Idle', 'Working', 'Complete'];
   const [agent1Status, setAgent1Status] = useState(0);
@@ -133,19 +137,36 @@ export function FlowTab({ lowStimulus }: any) {
      addLog('success', 'File system write approved (`Button.tsx`).');
      setTimeout(() => setGateApproved(false), 3000);
   };
+  
+  const filteredLogs = filter === 'all' ? logs : logs.filter((l: any) => l.level === filter);
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
        <div className="lg:col-span-2 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-             <h2 className="text-lg font-semibold tracking-tight">Reasoning Console</h2>
-             <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Sub-Agent Swarm Active</span>
+             <div className="flex items-center gap-4">
+               <h2 className="text-lg font-semibold tracking-tight">Reasoning Console</h2>
+               <div className="flex gap-2 text-[10px] font-mono tracking-widest uppercase">
+                  {['all', 'info', 'reasoning', 'success', 'action', 'error'].map(f => (
+                     <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-2 py-1 border transition-colors ${filter === f ? 'bg-white text-black border-white' : 'bg-transparent text-white/50 border-white/20 hover:text-white'}`}
+                     >
+                        {f}
+                     </button>
+                  ))}
+               </div>
+             </div>
+             <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider hidden md:inline-block">Sub-Agent Swarm Active</span>
           </div>
           
           <div className={`border p-1 ${lowStimulus ? 'border-zinc-900 bg-black' : 'border-white/20 bg-white/[0.02]'}`}>
              <div className="flex flex-col text-sm font-mono h-[300px] overflow-y-auto p-4 space-y-4">
                 <AnimatePresence>
-                  {logs.map((log: any) => (
+                  {filteredLogs.length === 0 ? (
+                    <div className="text-white/30 text-xs italic">No logs found for this filter.</div>
+                  ) : filteredLogs.map((log: any) => (
                     <motion.div
                        initial={{ opacity: 0, x: -10 }}
                        animate={{ opacity: 1, x: 0 }}
@@ -174,8 +195,8 @@ export function FlowTab({ lowStimulus }: any) {
              </div>
              {!gateApproved && (
                 <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                   <button className="flex-1 sm:flex-none px-4 py-2 min-h-[44px] text-[10px] font-black uppercase text-white hover:bg-white/10 border border-white/20 transition-colors focus:outline-none">Deny</button>
-                   <button onClick={handleApproveGate} className="flex-1 sm:flex-none px-6 py-2 min-h-[44px] text-[10px] font-black uppercase bg-white text-black hover:bg-cyan-100 transition-colors focus:outline-none">Approve</button>
+                   <button className="flex-1 sm:flex-none px-4 py-2 min-h-[44px] text-[10px] font-black uppercase text-white hover:bg-white/10 border border-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Deny</button>
+                   <button onClick={handleApproveGate} className="flex-1 sm:flex-none px-6 py-2 min-h-[44px] text-[10px] font-black uppercase bg-white text-black hover:bg-cyan-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">Approve</button>
                 </div>
              )}
           </div>
@@ -199,7 +220,8 @@ function LogItem({time, level, msg, pending}: any) {
     info: 'text-zinc-400',
     reasoning: 'text-blue-400',
     success: 'text-emerald-400',
-    action: 'text-amber-400'
+    action: 'text-amber-400',
+    error: 'text-red-500'
   };
   return (
      <div className="flex items-start gap-4">
@@ -245,7 +267,7 @@ export function FocusTab({ lowStimulus, setLowStimulus }: any) {
           <div className="relative z-10 shrink-0 w-full md:w-auto">
              <button 
                 onClick={() => setLowStimulus(!lowStimulus)}
-                className={`w-full md:w-auto flex justify-center items-center gap-3 px-6 py-4 min-h-[44px] text-xs font-black uppercase tracking-widest transition-colors focus:outline-none border ${
+                className={`w-full md:w-auto flex justify-center items-center gap-3 px-6 py-4 min-h-[44px] text-xs font-black uppercase tracking-widest transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border ${
                   lowStimulus 
                     ? 'bg-black border-white/20 text-white hover:bg-white/10' 
                     : 'bg-white border-transparent text-black hover:bg-cyan-100'
@@ -300,12 +322,15 @@ export function FocusTab({ lowStimulus, setLowStimulus }: any) {
 function KnowledgeGraphPanel({ low }: any) {
   const { logs = [], spatialMemory = [] } = useContext(AppContext);
   
+  const successLogs = logs.filter((l: any) => l.level === 'success').slice().reverse();
+  const recentAction = successLogs[0] ? (successLogs[0].msg.substring(0, 15).replace('Omni Core: ', '') + '...') : 'Context';
+  
   const nodes = [
     { id: 1, label: 'Me', x: '50%', y: '50%' },
     { id: 2, label: spatialMemory[0]?.label || 'Workspace', x: '20%', y: '20%' },
-    { id: 3, label: 'Design Sync', x: '80%', y: '30%' },
+    { id: 3, label: spatialMemory[1]?.label || 'Design Sync', x: '80%', y: '30%' },
     { id: 4, label: 'Omni Agent', x: '50%', y: '80%' },
-    { id: 5, label: logs[logs.length - 1]?.level === 'success' ? 'Task Done' : 'Context', x: '25%', y: '75%' }
+    { id: 5, label: recentAction, x: '25%', y: '75%' }
   ];
 
   return (
@@ -391,7 +416,7 @@ export function ConnectTab({ lowStimulus }: any) {
                 <div className="w-full h-1 bg-black border border-white/10 overflow-hidden">
                    <div className="w-3/4 h-full bg-cyan-500" />
                 </div>
-                <button className="w-full min-h-[44px] bg-white hover:bg-cyan-100 text-black font-black uppercase text-[10px] tracking-widest mt-4 transition-colors focus:outline-none">
+                <button className="w-full min-h-[44px] bg-white hover:bg-cyan-100 text-black font-black uppercase text-[10px] tracking-widest mt-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500">
                   Join Session
                 </button>
              </div>

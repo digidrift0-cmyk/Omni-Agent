@@ -39,32 +39,99 @@ export default function App() {
     return localStorage.getItem('omni_onboarded') === 'true';
   });
 
+  const [cloudSynced, setCloudSynced] = useState(false);
+  const [proactiveEnabled, setProactiveEnabled] = useState(() => {
+    return localStorage.getItem('omni_proactive') !== 'false';
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const completeOnboarding = () => {
     setIsOnboarded(true);
     localStorage.setItem('omni_onboarded', 'true');
   };
 
   useEffect(() => {
-    localStorage.setItem('omni_logs', JSON.stringify(logs));
-  }, [logs]);
+    async function initCloud() {
+       try {
+         const [logsRes, memRes] = await Promise.all([
+           fetch('/api/logs'), fetch('/api/memory')
+         ]);
+         
+         if (logsRes.ok && memRes.ok) {
+            // Need robust checks because SPA fallback returns HTML
+            const remoteLogsText = await logsRes.text();
+            const remoteMemText = await memRes.text();
+            
+            if (remoteLogsText.startsWith('[') && remoteMemText.startsWith('[')) {
+                const remoteLogs = JSON.parse(remoteLogsText);
+                const remoteMem = JSON.parse(remoteMemText);
+                setLogs(remoteLogs);
+                setSpatialMemory(remoteMem);
+                setCloudSynced(true);
+                // Can't notify yet because notify uses state that relies on previous... actually we can use notify directly
+            }
+         }
+       } catch (e) {
+         console.log("Using local offline storage");
+       }
+    }
+    initCloud();
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('omni_memory', JSON.stringify(spatialMemory));
-  }, [spatialMemory]);
+    localStorage.setItem('omni_proactive', String(proactiveEnabled));
+  }, [proactiveEnabled]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (proactiveEnabled) {
+       timer = setInterval(() => {
+          const suggestions = [
+             "Detected high cognitive load. Recommend Low Stimulus engagement.",
+             "You have 3 unresolved intents from the previous session. Review in Flow tab?",
+             "Spatial map indicates non-optimal lighting for current task. Ignore or adjust?",
+             "Task efficiency is down 14%. Would you like to enable deep work focus?",
+             "Your personal knowledge graph has 2 orphaned concepts. Connect them?"
+          ];
+          const randomSugg = suggestions[Math.floor(Math.random() * suggestions.length)];
+          if (Math.random() > 0.5) { // 50% chance every 40 seconds
+             notify(`Proactive: ${randomSugg}`);
+             addLog('info', `Proactive suggestion surfaced: ${randomSugg}`);
+          }
+       }, 40000);
+    }
+    return () => clearInterval(timer);
+  }, [proactiveEnabled]);
+
+  useEffect(() => {
+    if (!cloudSynced) localStorage.setItem('omni_logs', JSON.stringify(logs));
+  }, [logs, cloudSynced]);
+
+  useEffect(() => {
+    if (!cloudSynced) localStorage.setItem('omni_memory', JSON.stringify(spatialMemory));
+  }, [spatialMemory, cloudSynced]);
 
   const addLog = (level: string, msg: string, pending = false) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const newLog = { id: Date.now().toString() + Math.random(), time, level, msg, pending };
+    
     setLogs((prev: any) => {
-      const newLogs = [...prev, { id: Date.now().toString() + Math.random(), time, level, msg, pending }];
+      const newLogs = [...prev, newLog];
       return newLogs.slice(-30);
     });
+
+    if (cloudSynced) fetch('/api/logs', { method: 'POST', body: JSON.stringify(newLog) }).catch(() => {});
   };
 
   const addMemory = (label: string, utility: string = 'Unknown') => {
+    const newMem = { id: Date.now().toString() + Math.random(), label, confidence: (70 + Math.random() * 25).toFixed(1), lastSeen: 'Just now', utility };
+    
     setSpatialMemory((prev: any) => {
-      const memory = [{ id: Date.now().toString() + Math.random(), label, confidence: (70 + Math.random() * 25).toFixed(1), lastSeen: 'Just now', utility }, ...prev];
+      const memory = [newMem, ...prev];
       return memory.slice(0, 10);
     });
+
+    if (cloudSynced) fetch('/api/memory', { method: 'POST', body: JSON.stringify(newMem) }).catch(() => {});
   };
 
   const notify = (text: string) => {
@@ -91,21 +158,23 @@ export default function App() {
 
   const handleCommandSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!command.trim()) return;
+    if (!command.trim() || isProcessing) return;
     
     const cmd = command.toLowerCase().trim();
-    if (cmd === 'low stimulus' || cmd === 'disable low') {
-       notify(cmd === 'low stimulus' ? 'Low stimulus mode engaged.' : 'Low stimulus mode disabled.');
-       setLowStimulus(cmd === 'low stimulus');
-       addLog('action', `Environment constraints updated: ${cmd}`);
+    if (cmd === 'low stimulus' || cmd === 'disable low' || cmd.includes('engage deep work') || cmd.includes('low stimulus')) {
+       const isLow = cmd.includes('disable') ? false : true;
+       notify(isLow ? 'Low stimulus mode engaged.' : 'Low stimulus mode disabled.');
+       setLowStimulus(isLow);
+       addLog('action', `Environment constraints updated: low stimulus ${isLow ? 'ON' : 'OFF'}`);
        setCommand('');
-    } else if (cmd === 'scan' || cmd === 'refresh vision') {
-       notify('Running spatial scan...');
+    } else if (cmd === 'scan' || cmd === 'refresh vision' || cmd.includes('accessibility blockers') || cmd.includes('accessibility audit')) {
+       notify('Running spatial scan and a11y audit...');
        setActiveTab('vision');
-       addLog('info', 'Executing explicit environmental LiDAR + Visual sweep.');
+       addLog('info', 'Executing explicit environmental LiDAR + Visual sweep for accessibility context.');
        setTimeout(() => {
           setSpatialConfidence(99.9);
-          addLog('success', 'Sweep complete. Context updated.');
+          addLog('success', 'A11y sweep complete. Detected missing ARIA labels on modal.');
+          addMemory('Missing ARIA', 'A11y Blocker');
           notify('Scan complete. Confidence 99.9%.');
        }, 1500);
        setCommand('');
@@ -121,6 +190,7 @@ export default function App() {
        setCommand('');
        
        try {
+         setIsProcessing(true);
          addLog('reasoning', 'Querying Gemini API for semantic action...', true);
          
          const apiKey = process.env.GEMINI_API_KEY;
@@ -129,20 +199,51 @@ export default function App() {
          }
 
          const ai = new GoogleGenAI({ apiKey });
+         const recentLogs = logs.slice(-8).map((l:any) => `[${l.level}] ${l.msg}`).join('\n');
+         const recentMem = spatialMemory.slice(-5).map((m:any) => `${m.label} (${m.utility})`).join('\n');
+         
+         const systemInstruction = `You are Omni-Agent, a proactive accessibility-first agent OS. 
+Current State:
+- Active Tab: ${activeTab}
+- Low Stimulus Mode: ${lowStimulus ? 'ON' : 'OFF'}
+- Recent Logs:
+${recentLogs}
+- Spatial Memory:
+${recentMem}
+
+Respond in Valid JSON exactly matching this format:
+{
+  "action": "A 1-2 sentence response/explanation of the proactive action taken or answer",
+  "level": "success", 
+  "newMemories": [{"label": "string", "utility": "string"}] // Max 2 new insights to add to spatial memory. Omit if nothing new.
+}`;
+
          const response = await ai.models.generateContent({
            model: 'gemini-2.5-pro',
-           contents: `You are Omni-Agent, a proactive accessibility-first agent OS. 
-           User command: "${tempCommand}". 
-           Currently active tab: ${activeTab}. 
-           Give a brief 1-2 sentence system action you would take and why.`
+           contents: systemInstruction + `\n\nUser command: "${tempCommand}"`,
+           config: {
+             responseMimeType: "application/json"
+           }
          });
          
          setLogs((prev: any) => prev.map((log: any) => log.msg.includes('Querying') ? { ...log, pending: false } : log));
-         const result = response.text ? response.text.replace(/\n(.*)/g, ' ').trim() : "Action resolved.";
-         addLog('success', `Omni Core: ${result}`);
-         addMemory(`Processed: ${tempCommand.substring(0, 15)}...`, 'Cognitive');
-         notify('Intent processed by Omni Core.');
-       } catch (error: any) {
+         
+         const rawResult = response.text || "{}";
+         try {
+           const cleanJson = rawResult.replace(/```json/g, '').replace(/```/g, '').trim();
+           const resultObj = JSON.parse(cleanJson);
+           addLog(resultObj.level || 'success', `Omni Core: ${resultObj.action || rawResult}`);
+           if (resultObj.newMemories && Array.isArray(resultObj.newMemories)) {
+              resultObj.newMemories.forEach((mem: any) => {
+                 addMemory(mem.label, mem.utility || 'Cognitive');
+              });
+           }
+           notify('Intent processed by Omni Core.');
+         } catch (e) {
+           addLog('success', `Omni Core: Action processed.`);
+           notify('Intent processed by Omni Core.');
+         }
+         } catch (error: any) {
          setLogs((prev: any) => prev.map((log: any) => log.msg.includes('Querying') ? { ...log, pending: false } : log));
          if (error.message.includes('GEMINI_API_KEY is missing')) {
            addLog('error', 'API Key missing. Please set GEMINI_API_KEY in environment or Netlify.');
@@ -150,12 +251,14 @@ export default function App() {
          } else {
            addLog('error', 'Remote core unreachable. Proceeding with local fallback rules.');
          }
+       } finally {
+         setIsProcessing(false);
        }
     }
   };
 
   return (
-    <AppContext.Provider value={{ spatialConfidence, systemUptime, logs, addLog, spatialMemory, addMemory, notify }}>
+    <AppContext.Provider value={{ spatialConfidence, systemUptime, logs, addLog, spatialMemory, addMemory, notify, cloudSynced, proactiveEnabled, setProactiveEnabled }}>
       {!isOnboarded && <Onboarding onComplete={completeOnboarding} />}
       <div className={`flex flex-col h-screen w-full transition-colors duration-500 overflow-hidden font-sans relative ${lowStimulus ? 'bg-black text-white' : 'bg-[#050505] text-white'}`}>
       
@@ -193,11 +296,11 @@ export default function App() {
                 <span className="font-mono text-[10px] bg-white/10 px-2 py-0.5 rounded text-cyan-400 uppercase tracking-widest hidden sm:inline-block">v1.0.0-beta</span>
               </div>
               <div className="flex space-x-8 text-[11px] font-bold tracking-[0.2em] uppercase text-white/50">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                  <span className="hidden sm:inline-block">System: Synced</span>
+                <div className={`flex items-center space-x-2 ${cloudSynced ? 'text-green-500' : 'text-amber-500'}`}>
+                  <div className={`w-2 h-2 rounded-full ${cloudSynced ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse'}`}></div>
+                  <span className="hidden sm:inline-block">System: {cloudSynced ? 'Cloud Synced' : 'Local Fallback'}</span>
                 </div>
-                <span className="hidden md:inline-block">SSOT Active: [Internal-Cap-2026]</span>
+                <span className="hidden md:inline-block">SSOT Active: {cloudSynced ? '[Netlify Edge]' : '[Local Storage]'}</span>
               </div>
             </header>
             
@@ -235,9 +338,10 @@ export default function App() {
                value={command} 
                onChange={e => setCommand(e.target.value)} 
                type="text" 
+               disabled={isProcessing}
                aria-label="Command input for Omni Agent"
-               placeholder="Summarize last meeting and highlight accessibility conflicts in spatial map..." 
-               className="w-full bg-transparent outline-none placeholder:text-black/40 text-black font-bold min-h-[44px]" 
+               placeholder={isProcessing ? "Processing intent..." : "Summarize last meeting and highlight accessibility conflicts in spatial map..."}
+               className={`w-full bg-transparent outline-none placeholder:text-black/40 text-black font-bold min-h-[44px] ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
           </form>
         </div>

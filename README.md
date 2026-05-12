@@ -19,21 +19,19 @@ npm install
 npm run dev
 ```
 
-### Deploying to Netlify
-This app is designed as a fast, client-side SPA built with Vite. It can be easily deployed to Netlify.
+### Deploying to Netlify (with Database Persistence)
+
+This app uses an active SSOT (Single Source of Truth) database setup backed by Postgres. To enable true persistence across your live site:
 
 1. Push this repository to GitHub/GitLab.
 2. In Netlify, click **Add new site** > **Import an existing project**.
-3. Select your repository. Netlify will detect the `netlify.toml` file and automatically use the correct build settings:
-   - **Build Command**: `npm run build`
-   - **Publish Directory**: `dist`
-4. Configure your Gemini API Key in Netlify:
-   - Go to **Site Configuration** > **Environment variables**
-   - Add a new variable:
-     - Key: `GEMINI_API_KEY`
-     - Value: `<your_gemini_api_key>`
-5. Click **Deploy**.
+3. Select your repository. Netlify detects the `netlify.toml` file correctly for the Vite + serverless functions setup.
+4. Go to **Integrations** -> search for **Storage** or **Database** and create a connected **Postgres DB**. (Netlify Database or Neon both work seamlessly). This automatically binds a `DATABASE_URL` environment variable.
+5. In **Site Configuration** > **Environment variables**, also add:
+   - Key: `GEMINI_API_KEY`
+   - Value: `<your_gemini_api_key>`
+6. Trigger a deploy!
 
-Without the `GEMINI_API_KEY`, the application will load but the dynamic chat and reasoning steps will safely fall back to local logging.
+The deployed app will securely communicate with Netlify Edge Functions (`/api/memory` and `/api/logs`) to read & write state. If `DATABASE_URL` is omitted, the app gracefully falls back to local `localStorage`!
 
 *Designed for the Ability Summit 2026, showcasing the future of accessible agents.*
