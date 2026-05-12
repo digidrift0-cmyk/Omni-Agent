@@ -107,6 +107,23 @@ export function SettingsTab({ lowStimulus, setLowStimulus }: any) {
         </div>
       </div>
 
+      <div className={`p-6 border ${lowStimulus ? 'border-zinc-900 bg-black' : 'border-white/10 bg-white/[0.02]'} space-y-6 mt-6`}>
+        <div className="flex items-center gap-3 mb-6">
+          <Info className="w-5 h-5 text-white/50" />
+          <h3 className="font-bold uppercase tracking-widest text-sm">Accessibility Statement (A11y)</h3>
+        </div>
+        <div className="text-xs text-white/70 leading-relaxed space-y-4">
+          <p>
+            Omni-Agent is committed to exceeding WCAG 2.2 AA standards. Our philosophy is that adaptive AI interfaces must reduce cognitive friction and empower individual sensory preferences.
+          </p>
+          <ul className="list-disc pl-4 space-y-2 text-white/50">
+             <li><strong className="text-white/80">Visual Consistency:</strong> High contrast, bold cyber-minimalist design language.</li>
+             <li><strong className="text-white/80">Cognitive Guardrails:</strong> Proactive low stimulus recommendations and memory offloading via the Cloud SSOT.</li>
+             <li><strong className="text-white/80">Auditory/Motor:</strong> Full strict keyboard navigation structure (Focus rings / ARIA implementation).</li>
+          </ul>
+        </div>
+      </div>
+
       <div className={`p-6 border ${lowStimulus ? 'border-zinc-900 bg-black' : 'border-white/10 bg-white/[0.02]'} space-y-6`}>
         <div className="flex items-center gap-3 border-b border-white/10 pb-4">
           <Download className="w-5 h-5 text-white/50" />

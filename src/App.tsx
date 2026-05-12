@@ -58,7 +58,6 @@ export default function App() {
          ]);
          
          if (logsRes.ok && memRes.ok) {
-            // Need robust checks because SPA fallback returns HTML
             const remoteLogsText = await logsRes.text();
             const remoteMemText = await memRes.text();
             
@@ -68,11 +67,18 @@ export default function App() {
                 setLogs(remoteLogs);
                 setSpatialMemory(remoteMem);
                 setCloudSynced(true);
-                // Can't notify yet because notify uses state that relies on previous... actually we can use notify directly
+            } else {
+                console.warn("Netlify Functions returned non-JSON. Proceeding with local fallback.");
+                setCloudSynced(false);
             }
+         } else {
+             const logsErr = await logsRes.text();
+             console.error(`Cloud Sync Error: ${logsRes.status} - ${logsErr}`);
+             setCloudSynced(false);
          }
        } catch (e) {
-         console.log("Using local offline storage");
+         console.log("Using local offline storage due to network error", e);
+         setCloudSynced(false);
        }
     }
     initCloud();
